@@ -2,7 +2,7 @@
 
 # ----- Project Macro ----- #
 UnitTestCategory := AllTests
-UnitTestName := MyAlgorithmTest
+UnitTestName := IntegrateEllipsoidsTest
 TestScript := test.py
 
 # ------------------------------------------------------ #
@@ -17,10 +17,10 @@ MANTIDDIR := $(mkfile_top)/mantid
 BUILDDIR  := $(mkfile_top)/build
 INTALLDIR := $(mkfile_top)/opt/mantid
 HOSTNAME  := $(shell hostname)
-BASEOPTS  := -GNinja -DENABLE_MANTIDPLOT=OFF -DCMAKE_INSTALL_PREFIX=$(INTALLDIR)
+BASEOPTS  := -GNinja -DENABLE_MANTIDPLOT=OFF -DCMAKE_INSTALL_PREFIX=$(INTALLDIR) -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
 # ----- GDB -----
-TestExecutable := $(BUILDDIR)/bin/AlgorithmsTest
+TestExecutable := $(BUILDDIR)/bin/MDAlgorithmsTest
 
 # ----- BUILD OPTIONS -----
 ifneq (,$(findstring analysis,$(HOSTNAME)))
@@ -30,9 +30,17 @@ ifneq (,$(findstring analysis,$(HOSTNAME)))
 	CMKCMDS := cmake3 $(MANTIDDIR) $(CMKOPTS)
 	BLDCMDS := ninja all $(UnitTestCategory) && ninja install ; true
 else
-	CMKOPTS := $(BASEOPTS)
-	CMKCMDS := cmake $(MANTIDDIR) $(CMKOPTS)
-	BLDCMDS := ninja -j3 all $(UnitTestCategory) && ninja install ; true
+	ifneq (,$(findstring ndav,$(HOSTNAME)))
+		# on analysis cluster, need to turn off jemalloc and pre-commit for
+		# ndav?.sns.gov
+		CMKOPTS := $(BASEOPTS) -DUSE_JEMALLOC=OFF -DENABLE_PRECOMMIT=off
+		CMKCMDS := cmake3 $(MANTIDDIR) $(CMKOPTS)
+		BLDCMDS := ninja all $(UnitTestCategory) && ninja install ; true
+	else
+		CMKOPTS := $(BASEOPTS)
+		CMKCMDS := cmake $(MANTIDDIR) $(CMKOPTS)
+		BLDCMDS := ninja -j3 all $(UnitTestCategory) && ninja install ; true
+	endif
 endif
 
 # ----- UNIT TEST -----
